@@ -1,14 +1,14 @@
-import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import logging
 import sqlite3
+from app.core.config import settings
+
 
 logger = logging.getLogger(__name__)
 
-
-SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL", "sqlite:///./app.db")
+SQLALCHEMY_DATABASE_URL = settings.sqlalchemy_database_url
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,

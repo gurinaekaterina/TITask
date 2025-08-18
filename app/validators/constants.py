@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from app.core.config import settings
 
-TARGET_WORD: str = "Quantori"
+TARGET_WORD: str = settings.target_word
 TARGET_WORD_DISPLAY: str = f"'{TARGET_WORD}'"
-COMPANY_NAME_COL: str = "Company Name"
-DEFAULT_TXT_CHUNK: int = 1024 * 1024
+COMPANY_NAME_COL: str = settings.company_name_col
+DEFAULT_TXT_CHUNK: int = settings.default_txt_chunk
 
 
 @dataclass(slots=True)
