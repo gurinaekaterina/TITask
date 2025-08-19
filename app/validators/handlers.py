@@ -112,23 +112,23 @@ class CsvFileHandler(BaseFileHandler):
         super().__init__(filepath)
         self.encoding = encoding
 
-    def _read(self) -> Generator[Dict[str, str], None, None]:
-        with open(
-            self.filepath, "r", newline="", encoding=self.encoding, errors="ignore"
-        ) as f:
+    def _read(self) -> Iterable[dict[str, str]]:
+        with open(self.filepath, "r", newline="", encoding=self.encoding, errors="ignore") as f:
             reader = csv.DictReader(f)
+            rows: list[dict[str, str]] = []
             for row in reader:
-                yield {k: ("" if v is None else str(v)) for k, v in row.items()}
+                rows.append({k: ("" if v is None else str(v)) for k, v in row.items()})
+            return rows
 
-    def _search(self, stream: Iterable[Dict[str, str]]) -> ValidationResult:
+    def _search(self, stream: Iterable[dict[str, str]]) -> ValidationResult:
         return validate_tabular_data(stream, self.target_word_lower)
 
 
 class XlsxFileHandler(BaseFileHandler):
-    def _read(self) -> Iterable[Dict[str, str]]:
+    def _read(self) -> Iterable[dict[str, str]]:
         df = pd.read_excel(self.filepath, dtype=str).fillna("")
-        for rec in df.to_dict(orient="records"):
-            yield {k: ("" if v is None else str(v)) for k, v in rec.items()}
+        return [{k: ("" if v is None else str(v)) for k, v in rec.items()}
+                for rec in df.to_dict(orient="records")]
 
-    def _search(self, stream: Iterable[Dict[str, str]]) -> ValidationResult:
+    def _search(self, stream: Iterable[dict[str, str]]) -> ValidationResult:
         return validate_tabular_data(stream, self.target_word_lower)
