@@ -1,10 +1,11 @@
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker, declarative_base
 import logging
 import sqlite3
-from app.core.config import settings
 
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

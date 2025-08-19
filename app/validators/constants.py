@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from app.core.config import settings
 
 TARGET_WORD: str = settings.target_word

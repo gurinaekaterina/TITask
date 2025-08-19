@@ -1,12 +1,13 @@
 import csv
-from typing import Dict, Generator, Iterable, Mapping, Any
+from typing import Any, Dict, Generator, Iterable, Mapping
+
 import pandas as pd
 
 from .base import BaseFileHandler
 from .constants import (
-    TARGET_WORD_DISPLAY,
     COMPANY_NAME_COL,
     DEFAULT_TXT_CHUNK,
+    TARGET_WORD_DISPLAY,
     ValidationResult,
     normalize_text,
 )
@@ -37,9 +38,7 @@ def validate_tabular_data(
             if company_column is None:
                 return ValidationResult(False, f"Missing column '{COMPANY_NAME_COL}'")
 
-        normalized_row: Dict[str, str] = {
-            k: normalize_text(v) for k, v in row.items()
-        }
+        normalized_row: Dict[str, str] = {k: normalize_text(v) for k, v in row.items()}
 
         for col, val in normalized_row.items():
             if col != company_column and target_word in val:
@@ -55,14 +54,20 @@ def validate_tabular_data(
         return ValidationResult(False, "No data rows")
 
     if found_in_company:
-        return ValidationResult(True, f"Word {TARGET_WORD_DISPLAY} found in column '{COMPANY_NAME_COL}'")
+        return ValidationResult(
+            True, f"Word {TARGET_WORD_DISPLAY} found in column '{COMPANY_NAME_COL}'"
+        )
 
-    return ValidationResult(False, f"Word {TARGET_WORD_DISPLAY} not found in column '{COMPANY_NAME_COL}'")
+    return ValidationResult(
+        False, f"Word {TARGET_WORD_DISPLAY} not found in column '{COMPANY_NAME_COL}'"
+    )
 
 
 class TxtFileHandler(BaseFileHandler):
     @classmethod
-    def _read(cls, filepath: str, *, chunk_size: int, encoding: str) -> Generator[str, None, None]:
+    def _read(
+        cls, filepath: str, *, chunk_size: int, encoding: str
+    ) -> Generator[str, None, None]:
         with open(filepath, "r", encoding=encoding, errors="ignore") as f:
             while True:
                 chunk = f.read(chunk_size)
@@ -77,7 +82,9 @@ class TxtFileHandler(BaseFileHandler):
 
         target_word = cls.target_word_lower()
         if not target_word:
-            return ValidationResult(False, f"Target word {TARGET_WORD_DISPLAY} is empty")
+            return ValidationResult(
+                False, f"Target word {TARGET_WORD_DISPLAY} is empty"
+            )
 
         tail = ""
         overlap = max(len(target_word) - 1, 0)
@@ -85,7 +92,9 @@ class TxtFileHandler(BaseFileHandler):
         for chunk in cls._read(filepath, chunk_size=chunk_size, encoding=encoding):
             s = (tail + chunk).casefold()
             if target_word in s:
-                return ValidationResult(True, f"Word {TARGET_WORD_DISPLAY} found in text")
+                return ValidationResult(
+                    True, f"Word {TARGET_WORD_DISPLAY} found in text"
+                )
             tail = s[-overlap:] if overlap else ""
 
         return ValidationResult(False, f"Word {TARGET_WORD_DISPLAY} not found in text")
