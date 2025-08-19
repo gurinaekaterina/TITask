@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Type
-
-from app.validators.base import BaseFileHandler
-from app.validators.constants import ValidationResult
-from app.validators.handlers import TxtFileHandler, CsvFileHandler, XlsxFileHandler
+from .base import BaseFileHandler
+from .handlers import TxtFileHandler, CsvFileHandler, XlsxFileHandler
+from .constants import ValidationResult
 
 
 class FileValidator:
@@ -15,12 +14,7 @@ class FileValidator:
 
     @classmethod
     def validate_file(cls, filepath: str) -> ValidationResult:
-        try:
-            handler_class = cls.file_handlers[Path(filepath).suffix.lower()]
-        except KeyError:
+        handler_class = cls.file_handlers.get(Path(filepath).suffix.lower())
+        if handler_class is None:
             return ValidationResult(valid=False, reason="Unsupported file type")
-        handler_instance = handler_class(filepath)
-        handler_instance.process()
-        return ValidationResult(
-            valid=handler_instance.is_valid(), reason=handler_instance.reason
-        )
+        return handler_class.validate(filepath)
