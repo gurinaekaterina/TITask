@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>File Validation UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --gap: 12px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    h1 { margin: 0 0 16px; }
+    h2 { margin: 0 0 12px; }
+    section { margin: 0 0 24px; }
+    input, button, textarea { padding: 8px 10px; border-radius: 6px; border: 1px solid #cfcfcf; }
+    button { cursor: pointer; }
+    .row { display: flex; gap: var(--gap); flex-wrap: wrap; align-items: center; }
+    .stack { display: grid; gap: 6px; }
+    .file-card { border: 1px solid #e1e1e1; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .meta { color: #444; font-size: .9rem; }
+    .comment { margin-left: 10px; font-size: .95rem; color: #222; display: flex; align-items: center; gap: 8px; }
+    .comment small { color: #666; }
+    textarea { width: 100%; min-height: 56px; resize: vertical; }
+    .muted { color: #777; }
+    .success { color: #127a36; }
+    .error { color: #b00020; }
+    .divider { height: 1px; background: #eee; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>File Validation UI</h1>
+
+  <!-- LOGIN -->
+  <section id="login-section">
+    <h2>Login</h2>
+    <div class="stack" style="max-width: 360px;">
+      <input id="email" placeholder="email"/>
+      <input id="password" type="password" placeholder="password"/>
+      <div class="row">
+        <button id="login-btn" type="button">Login</button>
+      </div>
+      <p id="login-status" class="muted"></p>
+    </div>
+  </section>
+
+  <!-- UPLOAD -->
+  <section id="upload-section" style="display:none">
+    <h2>Upload File</h2>
+    <div class="row">
+      <input type="file" id="file-input" />
+      <button id="upload-btn" type="button">Upload</button>
+      <button id="logout-btn" type="button" class="muted">Logout</button>
+    </div>
+    <p id="upload-status" class="muted"></p>
+    <div class="divider"></div>
+  </section>
+
+  <!-- FILES -->
+  <section id="files-section" style="display:none">
+    <h2>Files</h2>
+    <div id="files-list"></div>
+    <p id="files-status" class="muted"></p>
+  </section>
+
+<script>
+/** ================= API base autodetect ================= */
+const API = (() => {
+  try {
+    const o = window.location.origin || "";
+    if (o.startsWith("http")) return o; // фронт отдаётся тем же FastAPI
+  } catch {}
+  return "http://localhost:8000";       // fallback для file:// или другого порта
+})();
+
+let token = localStorage.getItem("token") || null;
+
+// ------- helpers -------
+function show(id, on) { document.getElementById(id).style.display = on ? "block" : "none"; }
+function setText(id, text, cls = "") {
+  const el = document.getElementById(id);
+  el.className = cls;
+  el.innerText = text;
+}
+function toLocal(dt) {
+  try { return new Date(dt).toLocaleString(); } catch { return dt; }
+}
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+function loginUI() {
+  show("login-section", true);
+  show("upload-section", false);
+  show("files-section", false);
+}
+function appUI() {
+  show("login-section", false);
+  show("upload-section", true);
+  show("files-section", true);
+}
+function doLogout() {
+  localStorage.removeItem("token");
+  token = null;
+  setText("login-status", "Please log in", "muted");
+  loginUI();
+}
+function authHeader() {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+function handleAuthFailure(resp) {
+  if (resp && resp.status === 401) {
+    doLogout();
+    return true;
+  }
+  return false;
+}
+
+// ------- initial UI: if token exists, verify it by probing /files -------
+(async () => {
+  if (!token) {
+    loginUI();
+    return;
+  }
+  try {
+    const resp = await fetch(`${API}/files`, { headers: authHeader() });
+    if (handleAuthFailure(resp)) return; // shows login
+    if (resp.ok) {
+      appUI();
+      const data = await resp.json().catch(() => []);
+      renderFiles(Array.isArray(data) ? data : []);
+    } else {
+      loginUI();
+    }
+  } catch {
+    loginUI();
+  }
+})();
+
+// ------- login -------
+async function doLogin() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  setText("login-status", "Logging in...", "muted");
+  try {
+    const resp = await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const raw = await resp.text();
+    let data = null; try { data = JSON.parse(raw); } catch {}
+
+    if (!resp.ok) {
+      const msg = (data && (data.detail || data.message)) || raw || `HTTP ${resp.status}`;
+      setText("login-status", `Login failed: ${msg}`, "error");
+      return;
+    }
+
+    token = data.access_token;
+    localStorage.setItem("token", token);
+    setText("login-status", "Logged in!", "success");
+    appUI();
+    fetchFiles();
+  } catch (e) {
+    setText("login-status", `Network error: ${e}`, "error");
+  }
+}
+
+// ------- upload -------
+async function uploadFile() {
+  const f = document.getElementById("file-input").files[0];
+  if (!f) { setText("upload-status", "Choose a file first", "error"); return; }
+  setText("upload-status", "Uploading...", "muted");
+  const form = new FormData();
+  form.append("file", f);
+  try {
+    const resp = await fetch(`${API}/files/upload`, {
+      method: "POST",
+      headers: authHeader(),
+      body: form
+    });
+    if (handleAuthFailure(resp)) return; // token умер → на логин
+    const raw = await resp.text();
+    let data = null; try { data = JSON.parse(raw); } catch {}
+    if (!resp.ok) {
+      const msg = (data && (data.detail || data.message)) || raw || `HTTP ${resp.status}`;
+      setText("upload-status", `Upload failed: ${msg}`, "error");
+      return;
+    }
+    setText("upload-status", "Uploaded successfully", "success");
+    document.getElementById("file-input").value = "";
+    fetchFiles();
+  } catch (e) {
+    setText("upload-status", `Network error: ${e}`, "error");
+  }
+}
+
+// ------- list files -------
+async function fetchFiles() {
+  setText("files-status", "Loading...", "muted");
+  try {
+    const resp = await fetch(`${API}/files`, { headers: authHeader() });
+    if (handleAuthFailure(resp)) return; // token умер → на логин
+    const raw = await resp.text();
+    let data = null; try { data = JSON.parse(raw); } catch {}
+    if (!resp.ok) {
+      const msg = (data && (data.detail || data.message)) || raw || `HTTP ${resp.status}`;
+      setText("files-status", `Load failed: ${msg}`, "error");
+      return;
+    }
+    setText("files-status", "");
+    renderFiles(Array.isArray(data) ? data : []);
+  } catch (e) {
+    setText("files-status", `Network error: ${e}`, "error");
+  }
+}
+
+function renderFiles(files) {
+  const container = document.getElementById("files-list");
+  container.innerHTML = "";
+  if (!files.length) {
+    container.innerHTML = `<p class="muted">No files yet</p>`;
+    return;
+  }
+
+  files.forEach(f => {
+    const card = document.createElement("div");
+    card.className = "file-card";
+
+    const uploaderLabel = (f.uploader && f.uploader.email) ? f.uploader.email : `user ${f.uploader_id}`;
+    const reason = escapeHtml(f.reason || "");
+    card.innerHTML = `
+      <strong>${escapeHtml(f.filename)}</strong> (${escapeHtml(f.file_type)})<br/>
+      <span class="meta">Valid: <b>${f.valid ? "true" : "false"}</b></span><br/>
+      <span class="meta">Reason: ${reason}</span><br/>
+      <span class="meta">Uploaded by: <b>${escapeHtml(uploaderLabel)}</b> at ${escapeHtml(toLocal(f.created_at))}</span>
+      <div class="divider"></div>
+      <div id="comments-${f.id}"></div>
+      <div class="stack" style="margin-top:8px;">
+        <textarea id="new-comment-${f.id}" placeholder="Add comment"></textarea>
+        <button type="button" onclick="addComment(${f.id})">Add</button>
+      </div>
+    `;
+
+    // comments
+    const commentsDiv = card.querySelector(`#comments-${f.id}`);
+
+    const commentsSorted = (f.comments || [])
+      .slice()
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    commentsSorted.forEach((c, idx) => {
+      const safeText = escapeHtml(c.text || "");
+      const authorLabel = (c.author && c.author.email) ? c.author.email : `user ${c.user_id}`;
+
+      const created = c.created_at ? new Date(c.created_at) : null;
+      const updated = c.updated_at ? new Date(c.updated_at) : null;
+      const wasEdited = created && updated && (+updated !== +created);
+      const editedBadge = wasEdited ? ` <small class="muted">(edited at ${escapeHtml(toLocal(c.updated_at))})</small>` : "";
+
+      const el = document.createElement("div");
+      el.className = "comment";
+      el.innerHTML =
+        `<span>[#${idx + 1}]</span> <span>${safeText}</span> ` +
+        `<small>(by ${escapeHtml(authorLabel)})</small>${editedBadge}` +
+        (c.author && /* тут нет проверок прав на фронте, только визуально */
+         `<button type="button" onclick="editComment(${c.id}, ${f.id}, '${safeText}')">Edit</button>` || "");
+      commentsDiv.appendChild(el);
+    });
+
+    container.appendChild(card);
+  });
+}
+
+// ------- comments -------
+async function addComment(fileId) {
+  const ta = document.getElementById(`new-comment-${fileId}`);
+  const text = ta.value.trim();
+  if (!text) return;
+  try {
+    const resp = await fetch(`${API}/comments/file/${fileId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader() },
+      body: JSON.stringify({ text })
+    });
+    if (handleAuthFailure(resp)) return;
+    if (!resp.ok) {
+      const raw = await resp.text();
+      throw new Error(raw || `HTTP ${resp.status}`);
+    }
+    ta.value = "";
+    fetchFiles();
+  } catch (e) {
+    alert(`Failed to add comment: ${e}`);
+  }
+}
+
+async function editComment(commentId, fileId, oldText) {
+  const text = prompt("Edit comment", oldText);
+  if (text === null) return;
+  try {
+    const resp = await fetch(`${API}/comments/${commentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeader() },
+      body: JSON.stringify({ text })
+    });
+    if (handleAuthFailure(resp)) return;
+    if (!resp.ok) {
+      const raw = await resp.text();
+      if (resp.status === 403) { alert("You can edit only your comments."); return; }
+      throw new Error(raw || `HTTP ${resp.status}`);
+    }
+    fetchFiles();
+  } catch (e) {
+    alert(`Failed to update comment: ${e}`);
+  }
+}
+
+// ------- event bindings -------
+document.getElementById("login-btn").addEventListener("click", doLogin);
+document.getElementById("logout-btn").addEventListener("click", doLogout);
+document.getElementById("upload-btn").addEventListener("click", uploadFile);
+</script>
+</body>
+</html>
