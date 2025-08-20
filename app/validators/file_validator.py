@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import Type
+from typing import ClassVar
 
 from .base import BaseFileHandler
 from .constants import ValidationResult
@@ -14,7 +14,7 @@ class FileExtension(str, Enum):
 
 
 class FileValidator:
-    file_handlers: dict[FileExtension, Type[BaseFileHandler]] = {
+    file_handlers: ClassVar[dict[FileExtension, type[BaseFileHandler]]] = {
         FileExtension.TXT: TxtFileHandler,
         FileExtension.CSV: CsvFileHandler,
         FileExtension.XLSX: XlsxFileHandler,

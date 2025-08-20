@@ -1,14 +1,16 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum as SqlEnum,
     ForeignKey,
     Integer,
     String,
     Text,
+)
+from sqlalchemy import (
+    Enum as SqlEnum,
 )
 from sqlalchemy.orm import relationship
 
@@ -17,7 +19,7 @@ from app.validators.file_validator import FileExtension
 
 
 def utcnow():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class User(Base):

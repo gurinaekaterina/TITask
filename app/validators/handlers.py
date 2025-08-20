@@ -1,5 +1,6 @@
 import csv
-from typing import Any, Dict, Generator, Iterable, Mapping
+from collections.abc import Generator, Iterable, Mapping
+from typing import Any
 
 import pandas as pd
 
@@ -38,7 +39,7 @@ def validate_tabular_data(
             if company_column is None:
                 return ValidationResult(False, f"Missing column '{COMPANY_NAME_COL}'")
 
-        normalized_row: Dict[str, str] = {k: normalize_text(v) for k, v in row.items()}
+        normalized_row: dict[str, str] = {k: normalize_text(v) for k, v in row.items()}
 
         for col, val in normalized_row.items():
             if col != company_column and target_word in val:
@@ -68,7 +69,7 @@ class TxtFileHandler(BaseFileHandler):
     def _read(
         cls, filepath: str, *, chunk_size: int, encoding: str
     ) -> Generator[str, None, None]:
-        with open(filepath, "r", encoding=encoding, errors="ignore") as f:
+        with open(filepath, encoding=encoding, errors="ignore") as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
@@ -105,7 +106,7 @@ class CsvFileHandler(BaseFileHandler):
     def validate(cls, filepath: str, **kwargs: Any) -> ValidationResult:
         encoding = str(kwargs.get("encoding", "utf-8-sig"))
 
-        with open(filepath, "r", newline="", encoding=encoding, errors="ignore") as f:
+        with open(filepath, newline="", encoding=encoding, errors="ignore") as f:
             reader = csv.DictReader(f)
             rows = [normalize_row(row) for row in reader]
         return validate_tabular_data(rows, cls.target_word_lower())
