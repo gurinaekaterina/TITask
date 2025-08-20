@@ -35,7 +35,7 @@ class FileUpload(Base):
     __tablename__ = "files"
     id = Column(Integer, primary_key=True)
     filename = Column(String(512), nullable=False)
-    file_type = Column(SqlEnum(FileExtension, name="file_extension"), nullable=False)
+    file_type = Column(String(16), nullable=False)
     valid = Column(Boolean, nullable=False, default=False)
     reason = Column(Text, nullable=False, default="")
     created_at = Column(DateTime, default=utcnow, nullable=False)
