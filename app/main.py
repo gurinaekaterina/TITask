@@ -6,11 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     auth as auth_router,
-)
-from app.api import (
     comments as comments_router,
-)
-from app.api import (
     files as files_router,
 )
 

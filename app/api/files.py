@@ -4,13 +4,14 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload, selectinload
+
 from app.core.security import get_current_user, get_db
 from app.db.models import Comment, FileUpload, User
 from app.schemas.file import FileResponse
 from app.validators.file_validator import FileValidator
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload, selectinload
 
 router = APIRouter(prefix="/files", tags=["files"])
 

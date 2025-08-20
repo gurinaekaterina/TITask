@@ -1,6 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
+
 from app.core.security import get_current_user, get_db
 from app.db.models import Comment, FileUpload, User
 from app.schemas.comment import (
@@ -8,9 +12,6 @@ from app.schemas.comment import (
     CommentResponse,
     CommentUpdateRequest,
 )
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
 
 router = APIRouter(prefix="/comments", tags=["comments"])
 

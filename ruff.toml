@@ -31,3 +31,7 @@ ignore = [
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
+
+[lint.isort]
+known-first-party = ["app", "alembic"]
+combine-as-imports = true

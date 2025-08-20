@@ -4,13 +4,11 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum as SqlEnum,
     ForeignKey,
     Integer,
     String,
     Text,
-)
-from sqlalchemy import (
-    Enum as SqlEnum,
 )
 from sqlalchemy.orm import relationship
 

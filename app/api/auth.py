@@ -1,5 +1,9 @@
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.core.security import (
     create_access_token,
     get_db,
@@ -7,9 +11,6 @@ from app.core.security import (
 )
 from app.db.models import User
 from app.schemas.auth import AuthToken, LoginRequest
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
