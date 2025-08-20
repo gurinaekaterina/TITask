@@ -1,29 +1,42 @@
-from fastapi import FastAPI, File, UploadFile
-from pydantic import BaseModel
-from tempfile import NamedTemporaryFile
-import shutil
 from pathlib import Path
-from .file_validator import FileValidator
 
-app = FastAPI()
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-class ValidationResponse(BaseModel):
-    filename: str
-    valid: bool
+from app.api import (
+    auth as auth_router,
+)
+from app.api import (
+    comments as comments_router,
+)
+from app.api import (
+    files as files_router,
+)
 
-@app.post("/validate-file", response_model=ValidationResponse)
-async def validate_file(file: UploadFile = File(...)):
-    file_ext = Path(file.filename).suffix.lower()
+app = FastAPI(title="File Validation API")
 
-    if file_ext not in FileValidator.file_handlers:
-        return ValidationResponse(filename=file.filename, valid=False)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["*"],
+)
 
-    with NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
-        shutil.copyfileobj(file.file, temp_file)
-        temp_path = temp_file.name
+app.include_router(auth_router.router)
+app.include_router(files_router.router)
+app.include_router(comments_router.router)
 
-    try:
-        is_valid = bool(FileValidator.validate_file(temp_path))
-        return ValidationResponse(filename=file.filename, valid=is_valid)
-    finally:
-        Path(temp_path).unlink(missing_ok=True)
+
+def init_static_files(app: FastAPI) -> None:
+    frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
+    if frontend_dir.exists():
+        app.mount(
+            "/frontend",
+            StaticFiles(directory=str(frontend_dir), html=True),
+            name="frontend",
+        )
+
+
+init_static_files(app)
