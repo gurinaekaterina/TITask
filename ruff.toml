@@ -1,0 +1,33 @@
+line-length = 88
+target-version = "py311"
+
+src = ["app", "alembic", "tests"]
+
+exclude = [
+    ".venv",
+    "alembic/versions",
+    "frontend",
+    "data",
+    "docker",
+]
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "RUF"  # Ruff-specific rules - additional RUff checks
+]
+
+ignore = [
+    "E501",   # line too long
+]
+
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
